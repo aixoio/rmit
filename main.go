@@ -237,8 +237,9 @@ func generateCommitMessage(config *Config, diff string, model string) (string, e
 	}
 
 	// Prepare the prompt with more context
-	prompt := "Generate a concise and descriptive git commit message based on the following changes. " +
+	prompt := "Generate a short, concise git commit message based on the following changes. " +
 		"Follow the conventional commit format (e.g., feat:, fix:, docs:, style:, refactor:, test:, chore:). " +
+		"Keep it under 50 characters if possible. " +
 		"Only respond with the commit message, nothing else.\n\n"
 
 	if projectInfo != "" {
