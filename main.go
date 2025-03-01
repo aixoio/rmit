@@ -509,6 +509,13 @@ func main() {
 				log.Fatalf("Error getting git diff: %v", err)
 			}
 
+			// Print which model is being used
+			modelToUse := model
+			if model == "" {
+				modelToUse = config.DefaultModel
+			}
+			fmt.Printf("Using model: %s\n", modelToUse)
+
 			// Generate commit message
 			message, err := generateCommitMessage(config, diff, model)
 			if err != nil {
