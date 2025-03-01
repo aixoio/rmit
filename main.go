@@ -529,7 +529,7 @@ func main() {
 			} else {
 				// Ask for confirmation with additional options
 				for {
-					fmt.Print("Create commit with this message? (y/n/g/r): ")
+					fmt.Print("Create commit with this message? (y/n/g/r/s): ")
 
 					response, err := readUserInput()
 					if err != nil {
@@ -562,8 +562,18 @@ func main() {
 						}
 						fmt.Println("Regenerated commit message:")
 						fmt.Println(message)
+					} else if response == "s" {
+						fmt.Println("Summarizing the commit message...")
+						// Use the existing message and ask for a summary
+						summary, err := generateCommitMessage(config, "Please summarize this commit message in 50 characters or less:\n\n"+message, model)
+						if err != nil {
+							log.Fatalf("Error summarizing commit message: %v", err)
+						}
+						message = summary
+						fmt.Println("Summarized commit message:")
+						fmt.Println(message)
 					} else {
-						fmt.Println("Invalid option. Please choose y (yes), n (no), g (generate detailed), or r (retry).")
+						fmt.Println("Invalid option. Please choose y (yes), n (no), g (generate detailed), r (retry), or s (shorter).")
 					}
 				}
 			}
