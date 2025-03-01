@@ -573,10 +573,11 @@ func main() {
 				fmt.Printf("  %s - Generate more detailed message\n", blue("g"))
 				fmt.Printf("  %s - Retry with new generation\n", blue("r"))
 				fmt.Printf("  %s - Summarize message\n", blue("s"))
+				fmt.Printf("  %s - Provide feedback for the message\n", blue("p"))
 				fmt.Printf("%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 
 				for {
-					fmt.Print(yellow("Create commit with this message? [y/n/g/r/s]: "))
+					fmt.Print(yellow("Create commit with this message? [y/n/g/r/s/p]: "))
 
 					response, err := readUserInput()
 					if err != nil {
@@ -626,8 +627,34 @@ func main() {
 						fmt.Printf("%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 						fmt.Printf("\n%s\n\n", cyan(message))
 						fmt.Printf("%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+					} else if response == "p" {
+						fmt.Printf("%s\n", blue("🔍 Enter your feedback for the commit message:"))
+						fmt.Print("> ")
+
+						// Read a single line of input
+						reader := bufio.NewReader(os.Stdin)
+						feedbackLine, err := reader.ReadString('\n')
+						if err != nil {
+							log.Fatalf("%s %v", red("Error reading feedback:"), err)
+						}
+						feedback := strings.TrimSpace(feedbackLine)
+
+						fmt.Printf("%s\n", blue("🎯 Generating commit message based on your feedback..."))
+
+						// Use the feedback directly in the prompt
+						promptWithGuidance := "Based on this diff:\n\n" + diff + "\n\nAnd considering this feedback: " + feedback + "\n\nGenerate an appropriate commit message."
+						message, err = generateCommitMessage(config, promptWithGuidance, model)
+						if err != nil {
+							log.Fatalf("%s %v", red("Error generating commit message with custom guidance:"), err)
+						}
+
+						fmt.Printf("\n%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+						fmt.Printf("%s\n", blue("✨ FEEDBACK-BASED COMMIT MESSAGE:"))
+						fmt.Printf("%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+						fmt.Printf("\n%s\n\n", cyan(message))
+						fmt.Printf("%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 					} else {
-						fmt.Printf("%s\n", red("❌ Invalid option. Please choose y (yes), n (no), g (generate detailed), r (retry), or s (shorter)."))
+						fmt.Printf("%s\n", red("❌ Invalid option. Please choose y (yes), n (no), g (generate detailed), r (retry), s (shorter), or p (custom prompt)."))
 					}
 				}
 			}
