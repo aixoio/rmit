@@ -1,5 +1,5 @@
 # rmit (Open Router Auto Commit)
-rmit is a CLI tool that uses the OpenAI SDK with the OpenRouter endpoints to generate custom commit messages based on the changes in your project.
+rmit is a CLI tool that uses the OpenRouter API to generate custom commit messages based on the changes in your git repository.
 
 ## Features
 - Generate descriptive commit messages with AI

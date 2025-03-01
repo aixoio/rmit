@@ -681,7 +681,7 @@ func main() {
 
 	// Add flags
 	rootCmd.Flags().BoolVarP(&autoCommit, "commit", "c", false, "Automatically create commit with generated message")
-	rootCmd.Flags().StringVarP(&model, "model", "m", defaultModel, "OpenRouter model to use for generation")
+	rootCmd.Flags().StringVarP(&model, "model", "m", "", "OpenRouter model to use for generation (overrides default_model from config)")
 
 	// Execute command
 	if err := rootCmd.Execute(); err != nil {
