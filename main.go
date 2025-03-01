@@ -547,9 +547,12 @@ func main() {
 				log.Fatalf("%s %v", red("Error generating commit message:"), err)
 			}
 
-			// Output commit message
-			fmt.Printf("\n%s\n", blue("✨ Generated commit message:"))
-			fmt.Printf("%s\n\n", cyan(message))
+			// Output commit message with prominent formatting
+			fmt.Printf("\n%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+			fmt.Printf("%s\n", blue("✨ GENERATED COMMIT MESSAGE:"))
+			fmt.Printf("%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+			fmt.Printf("\n%s\n\n", cyan(message))
+			fmt.Printf("%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 
 			// Handle commit based on auto-commit flag or user confirmation
 			if autoCommit {
@@ -560,12 +563,14 @@ func main() {
 				fmt.Printf("%s\n", green("✅ Commit created successfully"))
 			} else {
 				// Ask for confirmation with additional options
-				fmt.Printf("%s\n", yellow("Options:"))
+				fmt.Printf("\n%s\n", yellow("⚙️  OPTIONS:"))
+				fmt.Printf("%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 				fmt.Printf("  %s - Create commit with this message\n", green("y/yes"))
 				fmt.Printf("  %s - Cancel commit\n", red("n/no"))
 				fmt.Printf("  %s - Generate more detailed message\n", blue("g"))
 				fmt.Printf("  %s - Retry with new generation\n", blue("r"))
 				fmt.Printf("  %s - Summarize message\n", blue("s"))
+				fmt.Printf("%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 
 				for {
 					fmt.Print(yellow("Create commit with this message? [y/n/g/r/s]: "))
@@ -590,16 +595,22 @@ func main() {
 						if err != nil {
 							log.Fatalf("%s %v", red("Error generating detailed commit message:"), err)
 						}
-						fmt.Printf("%s\n", blue("✨ Generated detailed commit message:"))
-						fmt.Printf("%s\n", cyan(message))
+						fmt.Printf("\n%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+						fmt.Printf("%s\n", blue("✨ GENERATED DETAILED COMMIT MESSAGE:"))
+						fmt.Printf("%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+						fmt.Printf("\n%s\n\n", cyan(message))
+						fmt.Printf("%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 					} else if response == "r" {
 						fmt.Printf("%s\n", blue("🔄 Retrying with a new generation..."))
 						message, err = generateCommitMessage(config, diff, model)
 						if err != nil {
 							log.Fatalf("%s %v", red("Error regenerating commit message:"), err)
 						}
-						fmt.Printf("%s\n", blue("✨ Regenerated commit message:"))
-						fmt.Printf("%s\n", cyan(message))
+						fmt.Printf("\n%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+						fmt.Printf("%s\n", blue("✨ REGENERATED COMMIT MESSAGE:"))
+						fmt.Printf("%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+						fmt.Printf("\n%s\n\n", cyan(message))
+						fmt.Printf("%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 					} else if response == "s" {
 						fmt.Printf("%s\n", blue("📝 Summarizing the commit message..."))
 						summary, err := generateCommitMessage(config, "Please summarize this commit message in 50 characters or less:\n\n"+message, model)
@@ -607,8 +618,11 @@ func main() {
 							log.Fatalf("%s %v", red("Error summarizing commit message:"), err)
 						}
 						message = summary
-						fmt.Printf("%s\n", blue("✨ Summarized commit message:"))
-						fmt.Printf("%s\n", cyan(message))
+						fmt.Printf("\n%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+						fmt.Printf("%s\n", blue("✨ SUMMARIZED COMMIT MESSAGE:"))
+						fmt.Printf("%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+						fmt.Printf("\n%s\n\n", cyan(message))
+						fmt.Printf("%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 					} else {
 						fmt.Printf("%s\n", red("❌ Invalid option. Please choose y (yes), n (no), g (generate detailed), r (retry), or s (shorter)."))
 					}
