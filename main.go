@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -344,12 +345,16 @@ func getProjectInfo() (string, error) {
 
 // readUserInput reads a single character from the user
 func readUserInput() (string, error) {
-	var input string
-	_, err := fmt.Scanln(&input)
+	reader := bufio.NewReader(os.Stdin)
+	input, err := reader.ReadString('\n')
 	if err != nil {
 		return "", err
 	}
-	return strings.ToLower(strings.TrimSpace(input)), nil
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return "y", nil
+	}
+	return strings.ToLower(input), nil
 }
 
 // generateCommitMessage uses OpenRouter to generate a commit message based on git diff and project information
