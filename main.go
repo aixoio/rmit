@@ -363,7 +363,7 @@ func main() {
 	fmt.Println()
 
 	// Print version info
-	fmt.Printf("%s %s\n", cyan("RMIT"), green("v1.0.0"))
+	fmt.Printf("%s %s\n", cyan("RMIT"), green("v1.1.0"))
 	fmt.Printf("%s\n", yellow("AI-powered commit message generator"))
 	fmt.Println(magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 	fmt.Println()
