@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
 
@@ -491,6 +492,29 @@ func main() {
 		model      string
 	)
 
+	// Initialize colors
+	red := color.New(color.FgRed).SprintFunc()
+	green := color.New(color.FgGreen).SprintFunc()
+	blue := color.New(color.FgBlue).SprintFunc()
+	yellow := color.New(color.FgYellow).SprintFunc()
+	cyan := color.New(color.FgCyan).SprintFunc()
+	magenta := color.New(color.FgMagenta).SprintFunc()
+
+	// Print header
+	fmt.Printf("%s\n", blue("██████╗ ███╗   ███╗██╗████████╗"))
+	fmt.Printf("%s\n", blue("██╔══██╗████╗ ████║██║╚══██╔══╝"))
+	fmt.Printf("%s\n", blue("██████╔╝██╔████╔██║██║   ██║   "))
+	fmt.Printf("%s\n", blue("██╔══██╗██║╚██╔╝██║██║   ██║   "))
+	fmt.Printf("%s\n", blue("██║  ██║██║ ╚═╝ ██║██║   ██║   "))
+	fmt.Printf("%s\n", blue("╚═╝  ╚═╝╚═╝     ╚═╝╚═╝   ╚═╝   "))
+	fmt.Println()
+
+	// Print version info
+	fmt.Printf("%s %s\n", cyan("RMIT"), green("v1.0.0"))
+	fmt.Printf("%s\n", yellow("AI-powered commit message generator"))
+	fmt.Println(magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+	fmt.Println()
+
 	// Create root command
 	rootCmd := &cobra.Command{
 		Use:   "rmit",
@@ -500,13 +524,13 @@ func main() {
 			// Load configuration
 			config, err := loadConfig()
 			if err != nil {
-				log.Fatalf("Error loading configuration: %v", err)
+				log.Fatalf("%s %v", red("Error loading configuration:"), err)
 			}
 
 			// Get git diff
 			diff, err := getGitDiff()
 			if err != nil {
-				log.Fatalf("Error getting git diff: %v", err)
+				log.Fatalf("%s %v", red("Error getting git diff:"), err)
 			}
 
 			// Print which model is being used
@@ -514,73 +538,79 @@ func main() {
 			if model == "" {
 				modelToUse = config.DefaultModel
 			}
-			fmt.Printf("Using model: %s\n", modelToUse)
+			fmt.Printf("%s %s\n", green("Using model:"), blue(modelToUse))
 
 			// Generate commit message
+			fmt.Printf("%s\n", yellow("Generating commit message..."))
 			message, err := generateCommitMessage(config, diff, model)
 			if err != nil {
-				log.Fatalf("Error generating commit message: %v", err)
+				log.Fatalf("%s %v", red("Error generating commit message:"), err)
 			}
 
 			// Output commit message
-			fmt.Println("Generated commit message:")
-			fmt.Println(message)
+			fmt.Printf("\n%s\n", blue("✨ Generated commit message:"))
+			fmt.Printf("%s\n\n", cyan(message))
 
 			// Handle commit based on auto-commit flag or user confirmation
 			if autoCommit {
 				// Auto-commit mode - commit without confirmation
 				if err := makeCommit(message); err != nil {
-					log.Fatalf("Error creating commit: %v", err)
+					log.Fatalf("%s %v", red("Error creating commit:"), err)
 				}
-				fmt.Println("Commit created successfully")
+				fmt.Printf("%s\n", green("✅ Commit created successfully"))
 			} else {
 				// Ask for confirmation with additional options
+				fmt.Printf("%s\n", yellow("Options:"))
+				fmt.Printf("  %s - Create commit with this message\n", green("y/yes"))
+				fmt.Printf("  %s - Cancel commit\n", red("n/no"))
+				fmt.Printf("  %s - Generate more detailed message\n", blue("g"))
+				fmt.Printf("  %s - Retry with new generation\n", blue("r"))
+				fmt.Printf("  %s - Summarize message\n", blue("s"))
+
 				for {
-					fmt.Print("Create commit with this message? (y/n/g/r/s): ")
+					fmt.Print(yellow("Create commit with this message? [y/n/g/r/s]: "))
 
 					response, err := readUserInput()
 					if err != nil {
-						log.Fatalf("Error reading user input: %v", err)
+						log.Fatalf("%s %v", red("Error reading user input:"), err)
 					}
 
 					if response == "y" || response == "yes" {
 						if err := makeCommit(message); err != nil {
-							log.Fatalf("Error creating commit: %v", err)
+							log.Fatalf("%s %v", red("Error creating commit:"), err)
 						}
-						fmt.Println("Commit created successfully")
+						fmt.Printf("%s\n", green("✅ Commit created successfully"))
 						break
 					} else if response == "n" || response == "no" {
-						fmt.Println("Commit canceled")
+						fmt.Printf("%s\n", yellow("⚠️ Commit canceled"))
 						break
 					} else if response == "g" {
-						fmt.Println("Generating a more detailed commit message...")
-						// Add more context to the prompt for a more detailed message
+						fmt.Printf("%s\n", blue("🔍 Generating a more detailed commit message..."))
 						message, err = generateCommitMessage(config, diff+"\n\nPlease provide a more detailed commit message with additional context and explanations.", model)
 						if err != nil {
-							log.Fatalf("Error generating detailed commit message: %v", err)
+							log.Fatalf("%s %v", red("Error generating detailed commit message:"), err)
 						}
-						fmt.Println("Generated detailed commit message:")
-						fmt.Println(message)
+						fmt.Printf("%s\n", blue("✨ Generated detailed commit message:"))
+						fmt.Printf("%s\n", cyan(message))
 					} else if response == "r" {
-						fmt.Println("Retrying with a new generation...")
+						fmt.Printf("%s\n", blue("🔄 Retrying with a new generation..."))
 						message, err = generateCommitMessage(config, diff, model)
 						if err != nil {
-							log.Fatalf("Error regenerating commit message: %v", err)
+							log.Fatalf("%s %v", red("Error regenerating commit message:"), err)
 						}
-						fmt.Println("Regenerated commit message:")
-						fmt.Println(message)
+						fmt.Printf("%s\n", blue("✨ Regenerated commit message:"))
+						fmt.Printf("%s\n", cyan(message))
 					} else if response == "s" {
-						fmt.Println("Summarizing the commit message...")
-						// Use the existing message and ask for a summary
+						fmt.Printf("%s\n", blue("📝 Summarizing the commit message..."))
 						summary, err := generateCommitMessage(config, "Please summarize this commit message in 50 characters or less:\n\n"+message, model)
 						if err != nil {
-							log.Fatalf("Error summarizing commit message: %v", err)
+							log.Fatalf("%s %v", red("Error summarizing commit message:"), err)
 						}
 						message = summary
-						fmt.Println("Summarized commit message:")
-						fmt.Println(message)
+						fmt.Printf("%s\n", blue("✨ Summarized commit message:"))
+						fmt.Printf("%s\n", cyan(message))
 					} else {
-						fmt.Println("Invalid option. Please choose y (yes), n (no), g (generate detailed), r (retry), or s (shorter).")
+						fmt.Printf("%s\n", red("❌ Invalid option. Please choose y (yes), n (no), g (generate detailed), r (retry), or s (shorter)."))
 					}
 				}
 			}
@@ -610,26 +640,26 @@ func main() {
 			switch key {
 			case "api_key":
 				if err := validateAPIKey(value); err != nil {
-					log.Fatalf("Invalid API key: %v", err)
+					log.Fatalf("%s %v", red("Invalid API key:"), err)
 				}
 				config.APIKey = value
 			case "api_url":
 				if err := validateAPIURL(value); err != nil {
-					log.Fatalf("Invalid API URL: %v", err)
+					log.Fatalf("%s %v", red("Invalid API URL:"), err)
 				}
 				config.APIURL = value
 			case "default_model":
 				config.DefaultModel = value
 			default:
-				log.Fatalf("Unknown configuration key: %s. Valid keys are: api_key, api_url, default_model", key)
+				log.Fatalf("%s %s. Valid keys are: api_key, api_url, default_model", red("Unknown configuration key:"), key)
 			}
 
 			// Save config
 			if err := saveConfig(config); err != nil {
-				log.Fatalf("Error saving configuration: %v", err)
+				log.Fatalf("%s %v", red("Error saving configuration:"), err)
 			}
 
-			fmt.Printf("Configuration updated: %s = %s\n", key, value)
+			fmt.Printf("%s %s = %s\n", green("✅ Configuration updated:"), blue(key), cyan(value))
 		},
 	}
 
@@ -643,23 +673,25 @@ func main() {
 			// Load config
 			config, err := loadConfig()
 			if err != nil {
-				log.Fatalf("Error loading configuration: %v", err)
+				log.Fatalf("%s %v", red("Error loading configuration:"), err)
 			}
 
 			// If no key specified, show all (except sensitive data like API key)
 			if len(args) == 0 {
-				fmt.Println("Current configuration:")
+				fmt.Printf("%s\n", blue("📋 Current configuration:"))
+				fmt.Printf("%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 				if config.APIKey != "" {
-					fmt.Println("api_key: [SET]")
+					fmt.Printf("%s %s\n", green("api_key:"), blue("[SET]"))
 				} else {
-					fmt.Println("api_key: [NOT SET]")
+					fmt.Printf("%s %s\n", green("api_key:"), red("[NOT SET]"))
 				}
-				fmt.Printf("api_url: %s\n", config.APIURL)
-				fmt.Printf("default_model: %s\n", config.DefaultModel)
+				fmt.Printf("%s %s\n", green("api_url:"), blue(config.APIURL))
+				fmt.Printf("%s %s\n", green("default_model:"), blue(config.DefaultModel))
+				fmt.Printf("%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 
 				// Show config file location
 				configPath, _ := getConfigPath()
-				fmt.Printf("\nConfiguration stored at: %s\n", configPath)
+				fmt.Printf("\n%s %s\n", green("💾 Configuration stored at:"), blue(configPath))
 				return
 			}
 
@@ -668,16 +700,16 @@ func main() {
 			switch key {
 			case "api_key":
 				if config.APIKey != "" {
-					fmt.Println("[SET]")
+					fmt.Printf("%s\n", blue("[SET]"))
 				} else {
-					fmt.Println("[NOT SET]")
+					fmt.Printf("%s\n", red("[NOT SET]"))
 				}
 			case "api_url":
-				fmt.Println(config.APIURL)
+				fmt.Printf("%s\n", blue(config.APIURL))
 			case "default_model":
-				fmt.Println(config.DefaultModel)
+				fmt.Printf("%s\n", blue(config.DefaultModel))
 			default:
-				log.Fatalf("Unknown configuration key: %s. Valid keys are: api_key, api_url, default_model", key)
+				log.Fatalf("%s %s. Valid keys are: api_key, api_url, default_model", red("Unknown configuration key:"), key)
 			}
 		},
 	}
@@ -692,7 +724,7 @@ func main() {
 
 	// Execute command
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		fmt.Printf("%s\n", red(err))
 		os.Exit(1)
 	}
 }
