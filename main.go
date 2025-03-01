@@ -538,10 +538,13 @@ func main() {
 			if model == "" {
 				modelToUse = config.DefaultModel
 			}
-			fmt.Printf("%s %s\n", green("Using model:"), blue(modelToUse))
+
+			fmt.Printf("\n%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+			fmt.Printf("%s %s\n", green("🤖 USING MODEL:"), cyan(modelToUse))
+			fmt.Printf("%s\n", magenta("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 
 			// Generate commit message
-			fmt.Printf("%s\n", yellow("Generating commit message..."))
+			fmt.Printf("\n%s\n", yellow("Generating commit message..."))
 			message, err := generateCommitMessage(config, diff, model)
 			if err != nil {
 				log.Fatalf("%s %v", red("Error generating commit message:"), err)
