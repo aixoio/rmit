@@ -13,7 +13,12 @@ import (
 var GetCmd = &cobra.Command{
 	Use:   "get [key]",
 	Short: "Get configuration values",
-	Long:  "Get configuration values like API key, URL, and default model",
+	Long: `Get configuration values like API key, URL, and default model.
+
+Examples:
+  rmit get                 # show all configuration values
+  rmit get api_key         # show the current API key
+  rmit get default_model   # show the configured model`,
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		ks := lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4")).Bold(true).MarginRight(1)
