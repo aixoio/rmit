@@ -19,29 +19,35 @@ func getGitDiff() (string, error) {
 		return "", fmt.Errorf("failed to get worktree: %w", err)
 	}
 
-	status, err := worktree.Status()
+	// First try to get staged diff (index to HEAD)
+	stagedChanges, err := worktree.Diff(&git.DiffOptions{Staged: true})
 	if err != nil {
-		return "", fmt.Errorf("failed to get status: %w", err)
+		return "", fmt.Errorf("failed to get staged diff: %w", err)
 	}
 
-	var diffBuilder strings.Builder
-	for path, stat := range status {
-		switch {
-		case stat.Staging == git.Added:
-			diffBuilder.WriteString(fmt.Sprintf("A  %s (staged)\n", path))
-		case stat.Staging == git.Deleted:
-			diffBuilder.WriteString(fmt.Sprintf("D  %s (staged)\n", path))
-		case stat.Staging == git.Modified:
-			diffBuilder.WriteString(fmt.Sprintf("M  %s (staged)\n", path))
-		case stat.Worktree == git.Untracked:
-			diffBuilder.WriteString(fmt.Sprintf("?? %s\n", path))
-		case stat.Worktree == git.Modified:
-			diffBuilder.WriteString(fmt.Sprintf(" M %s\n", path))
-		case stat.Worktree == git.Deleted:
-			diffBuilder.WriteString(fmt.Sprintf(" D %s\n", path))
+	if stagedChanges.Len() > 0 {
+		patch, err := stagedChanges.Patch()
+		if err != nil {
+			return "", fmt.Errorf("failed to generate patch: %w", err)
 		}
+		return patch.String(), nil
 	}
-	return diffBuilder.String(), nil
+
+	// If no staged changes, get unstaged diff (worktree to index)
+	unstagedChanges, err := worktree.Diff(&git.DiffOptions{Staged: false})
+	if err != nil {
+		return "", fmt.Errorf("failed to get unstaged diff: %w", err)
+	}
+
+	if unstagedChanges.Len() == 0 {
+		return "", fmt.Errorf("no changes detected in the repository")
+	}
+
+	patch, err := unstagedChanges.Patch()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate patch: %w", err)
+	}
+	return patch.String(), nil
 }
 
 var RootCmd = &cobra.Command{
