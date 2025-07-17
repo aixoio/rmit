@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	cmd := &cobra.Command{
+	rootCmd := &cobra.Command{
 		Use:   "rmit",
 		Short: "Generate git commit messages with AI",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -18,7 +18,7 @@ func main() {
 		},
 	}
 
-	if err := fang.Execute(context.Background(), cmd); err != nil {
+	if err := fang.Execute(context.Background(), rootCmd); err != nil {
 		os.Exit(1)
 	}
 }
