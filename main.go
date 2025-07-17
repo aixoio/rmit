@@ -1,9 +1,20 @@
 package main
 
 import (
-	"fmt"
+	"context"
+	"os"
+
+	"github.com/charmbracelet/fang"
+	"github.com/spf13/cobra"
 )
 
 func main() {
-	fmt.Println("Hello world")
+	cmd := &cobra.Command{
+		Use:   "example",
+		Short: "A simple example program!",
+	}
+
+	if err := fang.Execute(context.Background(), cmd); err != nil {
+		os.Exit(1)
+	}
 }
