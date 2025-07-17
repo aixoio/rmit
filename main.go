@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/charmbracelet/fang"
@@ -10,8 +11,11 @@ import (
 
 func main() {
 	cmd := &cobra.Command{
-		Use:   "example",
-		Short: "A simple example program!",
+		Use:   "rmit",
+		Short: "Generate git commit messages with AI",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("Hi")
+		},
 	}
 
 	if err := fang.Execute(context.Background(), cmd); err != nil {
