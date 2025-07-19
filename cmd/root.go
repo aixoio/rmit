@@ -272,11 +272,19 @@ var RootCmd = &cobra.Command{
 		go func() {
 			defer ctx.Done()
 		}()
-		err := spinner.New().Context(ctx).Run()
+		var commitMsg string
+		err := spinner.New().Context(ctx).Run(func() {
+			var genErr error
+			commitMsg, genErr = generateCommitMessage(model)
+			if genErr != nil {
+				err = genErr
+			}
+		})
 		if err != nil {
-			// handle error ai!
+			fmt.Println(es.Render(fmt.Sprintf("Error: %v", err)))
+			return
 		}
 
-		fmt.Println(prompt)
+		fmt.Println(commitMsg)
 	},
 }
