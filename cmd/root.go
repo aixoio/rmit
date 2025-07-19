@@ -3,12 +3,12 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"log"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/charmbracelet/huh/spinner"
 	"github.com/charmbracelet/lipgloss"
 	git "github.com/go-git/go-git/v6"
 	"github.com/openai/openai-go"
@@ -264,9 +264,17 @@ var RootCmd = &cobra.Command{
 
 		model := viper.GetString("default_model")
 
-		prompt, err := generateCommitMessage(model)
+		ctx := context.Background()
+
+		prompt := ""
+		// var mutex sync.Mutex
+
+		go func() {
+			defer ctx.Done()
+		}()
+		err := spinner.New().Context(ctx).Run()
 		if err != nil {
-			log.Fatalf("%s %v", es.Render("Error:"), err)
+			// handle error ai!
 		}
 
 		fmt.Println(prompt)
