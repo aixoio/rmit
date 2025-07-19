@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -110,6 +111,57 @@ func getChangedFiles() ([]string, error) {
 		return unstaged, nil
 	}
 	return nil, fmt.Errorf("no changed files detected in the repository")
+}
+
+func getProjectInfo() (string, error) {
+	// Try to determine the project type based on files
+	files, err := filepath.Glob("*")
+	if err != nil {
+		return "", fmt.Errorf("failed to list files: %w", err)
+	}
+	// add support for more project types like gradle or uv w/ python or bun  or c++ just add more types of support ai!
+	var projectInfo strings.Builder
+	projectInfo.WriteString("Project files include: ")
+
+	// Look for specific project indicators
+	hasGoMod := false
+	hasPackageJSON := false
+	hasPomXML := false
+	hasCMake := false
+	hasPyProject := false
+
+	for _, file := range files {
+		switch file {
+		case "go.mod":
+			hasGoMod = true
+		case "package.json":
+			hasPackageJSON = true
+		case "pom.xml":
+			hasPomXML = true
+		case "CMakeLists.txt":
+			hasCMake = true
+		case "pyproject.toml":
+			hasPyProject = true
+		}
+	}
+
+	if hasGoMod {
+		projectInfo.WriteString("Go project. ")
+	}
+	if hasPackageJSON {
+		projectInfo.WriteString("JavaScript/Node.js project. ")
+	}
+	if hasPomXML {
+		projectInfo.WriteString("Java/Maven project. ")
+	}
+	if hasCMake {
+		projectInfo.WriteString("C/C++ project with CMake. ")
+	}
+	if hasPyProject {
+		projectInfo.WriteString("Python project. ")
+	}
+
+	return projectInfo.String(), nil
 }
 
 var RootCmd = &cobra.Command{
