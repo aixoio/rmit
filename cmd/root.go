@@ -235,7 +235,7 @@ var RootCmd = &cobra.Command{
 
 		diff, err := getGitDiff()
 		if err != nil {
-			log.Fatalf("%s %v", red("Error getting git diff:"), err) // make this look like an error use es for this ai!
+			log.Fatalf("%s %v", es.Render("Error getting git diff:"), err)
 		}
 
 		prompt += fileListStr + "Changes:\n" + diff
