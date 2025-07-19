@@ -2,90 +2,114 @@ package cmd
 
 import (
 	"fmt"
+	"os/exec"
+	"regexp"
 	"strings"
 
-	"github.com/go-git/go-git/v6"
-	"github.com/go-git/go-git/v6/plumbing"
-	"github.com/go-git/go-git/v6/plumbing/object"
+	git "github.com/go-git/go-git/v6"
 	"github.com/spf13/cobra"
 )
 
+// getGitDiff returns the unified diff of staged or unstaged changes using go-git
 func getGitDiff() (string, error) {
+	// Open the repository in current directory
 	repo, err := git.PlainOpen(".")
 	if err != nil {
 		return "", fmt.Errorf("current directory is not a git repository: %w", err)
 	}
-
-	worktree, err := repo.Worktree()
+	// Determine staged vs unstaged changes
+	wt, err := repo.Worktree()
 	if err != nil {
-		return "", fmt.Errorf("failed to get worktree: %w", err)
+		return "", fmt.Errorf("unable to access worktree: %w", err)
 	}
-
-	// Get staged changes first
-	status, err := worktree.Status()
+	// Prefer staged changes
+	status, err := wt.Status()
 	if err != nil {
-		return "", fmt.Errorf("failed to get worktree status: %w", err)
+		return "", fmt.Errorf("failed to get repository status: %w", err)
 	}
-
-	hasStaged := false
-	for _, fileStatus := range status {
-		if fileStatus.Staging != 0 {
-			hasStaged = true
+	// Build diff via git CLI for simplicity
+	// If there are staged changes, use --staged diff, otherwise fallback to unstaged
+	var args []string
+	for _, fs := range status {
+		if fs.Staging != git.Unmodified {
+			args = []string{"diff", "--staged"}
 			break
 		}
 	}
-
-	head, err := repo.Head()
+	if len(args) == 0 {
+		// no staged; use unstaged
+		args = []string{"diff"}
+	}
+	cmd := exec.Command("git", args...)
+	out, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("failed to get HEAD: %w", err)
+		return "", fmt.Errorf("failed to get git diff: %w", err)
 	}
-
-	headCommit, err := repo.CommitObject(head.Hash())
-	if err != nil {
-		return "", fmt.Errorf("failed to get HEAD commit: %w", err)
-	}
-
-	headTree, err := headCommit.Tree()
-	if err != nil {
-		return "", fmt.Errorf("failed to get HEAD tree: %w", err)
-	}
-
-	var diff *object.Tree
-	if hasStaged {
-		// Get staged changes
-		index, err := repo.Storer.Index()
-		if err != nil {
-			return "", fmt.Errorf("failed to get index: %w", err)
-		}
-
-		indexTree, err := index.Tree()
-		if err != nil {
-			return "", fmt.Errorf("failed to get index tree: %w", err)
-		}
-
-		diff, err = headTree.Diff(indexTree)
-		if err != nil {
-			return "", fmt.Errorf("failed to get staged diff: %w", err)
-		}
-	} else {
-		// Get unstaged changes
-		diff, err = worktree.Diff(headTree)
-		if err != nil {
-			return "", fmt.Errorf("failed to get unstaged diff: %w", err)
-		}
-	}
-
-	patch, err := diff.Patch()
-	if err != nil {
-		return "", fmt.Errorf("failed to create patch: %w", err)
-	}
-
-	output := patch.String()
-	if len(strings.TrimSpace(output)) == 0 {
+	if len(out) == 0 {
 		return "", fmt.Errorf("no changes detected in the repository")
 	}
+	return string(out), nil
+}
 
-	return output, nil
+// trackCodeChanges returns a map of file paths to their diff hunks using go-git
+func trackCodeChanges(_ string) (map[string]string, error) {
+	// Obtain the full diff
+	d, err := getGitDiff()
+	if err != nil {
+		return nil, err
+	}
+	// Get list of changed files
+	files, err := getChangedFiles()
+	if err != nil {
+		return nil, err
+	}
+	// For each file, extract its diff block
+	changes := make(map[string]string, len(files))
+	for _, f := range files {
+		// match diff header and content for this file
+		re := regexp.MustCompile(`(?ms)^diff --git a/` + regexp.QuoteMeta(f) + ` b/` + regexp.QuoteMeta(f) + `(.*?)(?=^diff --git|\z)`)
+		if m := re.FindString(d); m != "" {
+			changes[f] = strings.TrimSpace(m)
+		}
+	}
+	return changes, nil
+}
+
+// getChangedFiles returns the list of staged or unstaged changed files using go-git
+func getChangedFiles() ([]string, error) {
+	repo, err := git.PlainOpen(".")
+	if err != nil {
+		return nil, fmt.Errorf("current directory is not a git repository: %w", err)
+	}
+	wt, err := repo.Worktree()
+	if err != nil {
+		return nil, fmt.Errorf("unable to access worktree: %w", err)
+	}
+	status, err := wt.Status()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get repository status: %w", err)
+	}
+	// Collect staged changes
+	var staged []string
+	for file, fs := range status {
+		if fs.Staging != git.Unmodified {
+			staged = append(staged, file)
+		}
+	}
+	if len(staged) > 0 {
+		return staged, nil
+	}
+	// No staged, collect unstaged changes
+	var unstaged []string
+	for file, fs := range status {
+		if fs.Worktree != git.Unmodified {
+			unstaged = append(unstaged, file)
+		}
+	}
+	if len(unstaged) > 0 {
+		return unstaged, nil
+	}
+	return nil, fmt.Errorf("no changed files detected in the repository")
 }
 
 var RootCmd = &cobra.Command{
@@ -94,6 +118,8 @@ var RootCmd = &cobra.Command{
 	Long:  "rmit uses OpenRouter to generate descriptive git commit messages based on your changes",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Hi")
-		fmt.Println(getGitDiff())
+		// fmt.Println(getGitDiff())
+		fmt.Println(trackCodeChanges(""))
+		// fmt.Println(getChangedFiles())
 	},
 }
