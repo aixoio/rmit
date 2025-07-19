@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/charmbracelet/huh/spinner"
-	"github.com/charmbracelet/lipgloss"
 	git "github.com/go-git/go-git/v6"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
@@ -260,31 +260,32 @@ var RootCmd = &cobra.Command{
 	Short: "Generate git commit messages with AI",
 	Long:  "rmit uses OpenRouter to generate descriptive git commit messages based on your changes",
 	Run: func(cmd *cobra.Command, args []string) {
-		es := lipgloss.NewStyle().Foreground(lipgloss.Color("#ff0000")).Bold(true)
+		// es := lipgloss.NewStyle().Foreground(lipgloss.Color("#ff0000")).Bold(true)
 
 		model := viper.GetString("default_model")
 
-		ctx := context.Background()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 
 		prompt := ""
-		// var mutex sync.Mutex
+		var mutex sync.Mutex
 
 		go func() {
-			defer ctx.Done()
-		}()
-		var commitMsg string
-		err := spinner.New().Context(ctx).Run(func() {
-			var genErr error
-			commitMsg, genErr = generateCommitMessage(model)
-			if genErr != nil {
-				err = genErr
-			}
-		})
-		if err != nil {
-			fmt.Println(es.Render(fmt.Sprintf("Error: %v", err)))
-			return
-		}
+			defer cancel()
 
-		fmt.Println(commitMsg)
+			p, err := generateCommitMessage(model)
+			if err != nil {
+				panic(err)
+			}
+
+			mutex.Lock()
+			prompt = p
+			mutex.Unlock()
+		}()
+		spinner.New().Title("Generating commit message...").Context(ctx).Run()
+
+		mutex.Lock()
+		defer mutex.Unlock()
+		fmt.Println(prompt)
 	},
 }
