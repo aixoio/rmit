@@ -215,6 +215,8 @@ var RootCmd = &cobra.Command{
 		}
 
 		projectInfo, err := getProjectInfo()
-		// handle the error it's non-fatal so just do the same as the other one pls ai!
+		if err != nil {
+			log.Printf("%s couldn't get project info: %v", ws.Render("Warning:"), err)
+		}
 	},
 }
