@@ -201,18 +201,15 @@ func getProjectInfo() (string, error) {
 	return projectInfo.String(), nil
 }
 
-func generateCommitMessage() {
-	ws := lipgloss.NewStyle().Foreground(lipgloss.Color("#ffff00")).Bold(true)
-	es := lipgloss.NewStyle().Foreground(lipgloss.Color("#ff0000")).Bold(true)
-
+func generateCommitMessage() (string, error) {
 	changedFiles, err := getChangedFiles()
 	if err != nil {
-		log.Printf("%s couldn't get changed files: %v", ws.Render("Warning:"), err)
+		return "", fmt.Errorf("couldn't get changed files: %w", err)
 	}
 
 	projectInfo, err := getProjectInfo()
 	if err != nil {
-		log.Printf("%s couldn't get project info: %v", ws.Render("Warning:"), err)
+		return "", fmt.Errorf("couldn't get project info: %w", err)
 	}
 
 	var fileListStr string
@@ -231,10 +228,11 @@ func generateCommitMessage() {
 
 	diff, err := getGitDiff()
 	if err != nil {
-		log.Fatalf("%s %v", es.Render("Error getting git diff:"), err)
+		return "", fmt.Errorf("error getting git diff: %w", err)
 	}
 
 	prompt += fileListStr + "Changes:\n" + diff
+	return prompt, nil
 }
 
 var RootCmd = &cobra.Command{
@@ -245,6 +243,10 @@ var RootCmd = &cobra.Command{
 		ws := lipgloss.NewStyle().Foreground(lipgloss.Color("#ffff00")).Bold(true)
 		es := lipgloss.NewStyle().Foreground(lipgloss.Color("#ff0000")).Bold(true)
 
-		generateCommitMessage() // please make this func return a string (rn just make it return the value of prompt) and a error (if there are any erroes ofc) and move all of the current error handligin to here ai!
+		prompt, err := generateCommitMessage()
+		if err != nil {
+			log.Fatalf("%s %v", es.Render("Error:"), err)
+		}
+		_ = prompt // TODO: use the prompt for AI generation
 	},
 }
