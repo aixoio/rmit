@@ -119,7 +119,6 @@ func getProjectInfo() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to list files: %w", err)
 	}
-	// add support for more project types like gradle or uv w/ python or bun  or c++ just add more types of support ai!
 	var projectInfo strings.Builder
 	projectInfo.WriteString("Project files include: ")
 
@@ -129,6 +128,12 @@ func getProjectInfo() (string, error) {
 	hasPomXML := false
 	hasCMake := false
 	hasPyProject := false
+	hasGradle := false
+	hasUV := false
+	hasBun := false
+	hasMakefile := false
+	hasCargo := false
+	hasComposer := false
 
 	for _, file := range files {
 		switch file {
@@ -142,6 +147,18 @@ func getProjectInfo() (string, error) {
 			hasCMake = true
 		case "pyproject.toml":
 			hasPyProject = true
+		case "build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts":
+			hasGradle = true
+		case "uv.lock", "requirements.txt", "setup.py":
+			hasUV = true
+		case "bun.lockb", "bunfig.toml":
+			hasBun = true
+		case "Makefile":
+			hasMakefile = true
+		case "Cargo.toml":
+			hasCargo = true
+		case "composer.json":
+			hasComposer = true
 		}
 	}
 
@@ -159,6 +176,24 @@ func getProjectInfo() (string, error) {
 	}
 	if hasPyProject {
 		projectInfo.WriteString("Python project. ")
+	}
+	if hasGradle {
+		projectInfo.WriteString("Java/Gradle project. ")
+	}
+	if hasUV {
+		projectInfo.WriteString("Python/uv project. ")
+	}
+	if hasBun {
+		projectInfo.WriteString("JavaScript/Bun project. ")
+	}
+	if hasMakefile {
+		projectInfo.WriteString("C/C++ project with Makefile. ")
+	}
+	if hasCargo {
+		projectInfo.WriteString("Rust project. ")
+	}
+	if hasComposer {
+		projectInfo.WriteString("PHP/Composer project. ")
 	}
 
 	return projectInfo.String(), nil
