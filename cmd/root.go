@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os/exec"
@@ -10,7 +11,10 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	git "github.com/go-git/go-git/v6"
+	"github.com/openai/openai-go"
+	"github.com/openai/openai-go/option"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // getGitDiff returns the unified diff of staged or unstaged changes using go-git
@@ -240,13 +244,30 @@ var RootCmd = &cobra.Command{
 	Short: "Generate git commit messages with AI",
 	Long:  "rmit uses OpenRouter to generate descriptive git commit messages based on your changes",
 	Run: func(cmd *cobra.Command, args []string) {
-		ws := lipgloss.NewStyle().Foreground(lipgloss.Color("#ffff00")).Bold(true)
 		es := lipgloss.NewStyle().Foreground(lipgloss.Color("#ff0000")).Bold(true)
+
+		model := viper.GetString("default_model")
 
 		prompt, err := generateCommitMessage()
 		if err != nil {
 			log.Fatalf("%s %v", es.Render("Error:"), err)
 		}
-		_ = prompt // TODO: use the prompt for AI generation
+
+		client := openai.NewClient(
+			option.WithBaseURL(viper.GetString("api_url")),
+			option.WithAPIKey(viper.GetString("api_key")),
+		)
+
+		chatCompletion, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
+			Messages: []openai.ChatCompletionMessageParamUnion{
+				openai.UserMessage(prompt),
+			},
+			Model: model,
+		})
+		if err != nil {
+			log.Fatalf("%s %v", es.Render("Error:"), err)
+		}
+
+		fmt.Println(chatCompletion.Choices[0].Message.Content)
 	},
 }
