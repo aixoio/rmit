@@ -2,11 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	git "github.com/go-git/go-git/v6"
 	"github.com/spf13/cobra"
 )
@@ -204,6 +206,15 @@ var RootCmd = &cobra.Command{
 	Short: "Generate git commit messages with AI",
 	Long:  "rmit uses OpenRouter to generate descriptive git commit messages based on your changes",
 	Run: func(cmd *cobra.Command, args []string) {
+		ws := lipgloss.NewStyle().Foreground(lipgloss.Color("#ffff00")).Bold(true)
+		es := lipgloss.NewStyle().Foreground(lipgloss.Color("#ff0000")).Bold(true)
 
+		changedFiles, err := getChangedFiles()
+		if err != nil {
+			log.Printf("%s couldn't get changed files: %v", ws.Render("Warning:"), err)
+		}
+
+		projectInfo, err := getProjectInfo()
+		// handle the error it's non-fatal so just do the same as the other one pls ai!
 	},
 }
