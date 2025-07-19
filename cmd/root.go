@@ -205,7 +205,7 @@ func getProjectInfo() (string, error) {
 	return projectInfo.String(), nil
 }
 
-func generateCommitMessage() (string, error) {
+func generateCommitMessage(m string) (string, error) {
 	changedFiles, err := getChangedFiles()
 	if err != nil {
 		return "", fmt.Errorf("couldn't get changed files: %w", err)
@@ -236,7 +236,23 @@ func generateCommitMessage() (string, error) {
 	}
 
 	prompt += fileListStr + "Changes:\n" + diff
-	return prompt, nil
+
+	client := openai.NewClient(
+		option.WithBaseURL(viper.GetString("api_url")),
+		option.WithAPIKey(viper.GetString("api_key")),
+	)
+
+	chatCompletion, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
+		Messages: []openai.ChatCompletionMessageParamUnion{
+			openai.UserMessage(prompt),
+		},
+		Model: m,
+	})
+	if err != nil {
+		return "", fmt.Errorf("error getting git diff: %w", err)
+	}
+
+	return chatCompletion.Choices[0].Message.Content, nil
 }
 
 var RootCmd = &cobra.Command{
@@ -248,26 +264,11 @@ var RootCmd = &cobra.Command{
 
 		model := viper.GetString("default_model")
 
-		prompt, err := generateCommitMessage()
+		prompt, err := generateCommitMessage(model)
 		if err != nil {
 			log.Fatalf("%s %v", es.Render("Error:"), err)
 		}
 
-		client := openai.NewClient(
-			option.WithBaseURL(viper.GetString("api_url")),
-			option.WithAPIKey(viper.GetString("api_key")),
-		)
-
-		chatCompletion, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
-			Messages: []openai.ChatCompletionMessageParamUnion{
-				openai.UserMessage(prompt),
-			},
-			Model: model,
-		})
-		if err != nil {
-			log.Fatalf("%s %v", es.Render("Error:"), err)
-		}
-
-		fmt.Println(chatCompletion.Choices[0].Message.Content)
+		fmt.Println(prompt)
 	},
 }
