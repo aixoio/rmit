@@ -18,7 +18,7 @@ func getGitDiff() (string, error) {
 		return "", fmt.Errorf("failed to get worktree: %w", err)
 	}
 	// Get staged changes
-	stagedDiff, err := worktree.DiffStaging()
+	stagedDiff, err := worktree.DiffStaging() // this method does not exist ai!
 	if err != nil {
 		return "", fmt.Errorf("failed to get staged changes: %w", err)
 	}
@@ -36,7 +36,7 @@ func getGitDiff() (string, error) {
 	}
 
 	// Get unstaged changes
-	unstagedDiff, err := worktree.Diff()
+	unstagedDiff, err := worktree.Diff() // this method does not exist ai!
 	if err != nil {
 		return "", fmt.Errorf("failed to get unstaged changes: %w", err)
 	}
