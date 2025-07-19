@@ -242,6 +242,9 @@ var RootCmd = &cobra.Command{
 	Short: "Generate git commit messages with AI",
 	Long:  "rmit uses OpenRouter to generate descriptive git commit messages based on your changes",
 	Run: func(cmd *cobra.Command, args []string) {
-		generateCommitMessage()
+		ws := lipgloss.NewStyle().Foreground(lipgloss.Color("#ffff00")).Bold(true)
+		es := lipgloss.NewStyle().Foreground(lipgloss.Color("#ff0000")).Bold(true)
+
+		generateCommitMessage() // please make this func return a string (rn just make it return the value of prompt) and a error (if there are any erroes ofc) and move all of the current error handligin to here ai!
 	},
 }
