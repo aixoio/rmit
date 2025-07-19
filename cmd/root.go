@@ -2,8 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/plumbing"
+	"github.com/go-git/go-git/v6/plumbing/object"
 	"github.com/spf13/cobra"
 )
 
@@ -17,42 +20,72 @@ func getGitDiff() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get worktree: %w", err)
 	}
-	// Get staged changes
-	stagedDiff, err := worktree.DiffStaging() // this method does not exist ai!
+
+	// Get staged changes first
+	status, err := worktree.Status()
 	if err != nil {
-		return "", fmt.Errorf("failed to get staged changes: %w", err)
+		return "", fmt.Errorf("failed to get worktree status: %w", err)
 	}
 
-	stagedPatch, err := stagedDiff.Patch()
+	hasStaged := false
+	for _, fileStatus := range status {
+		if fileStatus.Staging != 0 {
+			hasStaged = true
+			break
+		}
+	}
+
+	head, err := repo.Head()
 	if err != nil {
-		return "", fmt.Errorf("failed to create staged patch: %w", err)
+		return "", fmt.Errorf("failed to get HEAD: %w", err)
 	}
 
-	stagedOutput := stagedPatch.String()
-
-	// If we have staged changes, return them
-	if len(stagedOutput) > 0 {
-		return stagedOutput, nil
-	}
-
-	// Get unstaged changes
-	unstagedDiff, err := worktree.Diff() // this method does not exist ai!
+	headCommit, err := repo.CommitObject(head.Hash())
 	if err != nil {
-		return "", fmt.Errorf("failed to get unstaged changes: %w", err)
+		return "", fmt.Errorf("failed to get HEAD commit: %w", err)
 	}
 
-	unstagedPatch, err := unstagedDiff.Patch()
+	headTree, err := headCommit.Tree()
 	if err != nil {
-		return "", fmt.Errorf("failed to create unstaged patch: %w", err)
+		return "", fmt.Errorf("failed to get HEAD tree: %w", err)
 	}
 
-	unstagedOutput := unstagedPatch.String()
+	var diff *object.Tree
+	if hasStaged {
+		// Get staged changes
+		index, err := repo.Storer.Index()
+		if err != nil {
+			return "", fmt.Errorf("failed to get index: %w", err)
+		}
 
-	if len(unstagedOutput) == 0 {
+		indexTree, err := index.Tree()
+		if err != nil {
+			return "", fmt.Errorf("failed to get index tree: %w", err)
+		}
+
+		diff, err = headTree.Diff(indexTree)
+		if err != nil {
+			return "", fmt.Errorf("failed to get staged diff: %w", err)
+		}
+	} else {
+		// Get unstaged changes
+		diff, err = worktree.Diff(headTree)
+		if err != nil {
+			return "", fmt.Errorf("failed to get unstaged diff: %w", err)
+		}
+	}
+
+	patch, err := diff.Patch()
+	if err != nil {
+		return "", fmt.Errorf("failed to create patch: %w", err)
+	}
+
+	output := patch.String()
+	if len(strings.TrimSpace(output)) == 0 {
 		return "", fmt.Errorf("no changes detected in the repository")
 	}
 
-	return unstagedOutput, nil
+	return output, nil
 }
 
 var RootCmd = &cobra.Command{
