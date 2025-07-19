@@ -17,7 +17,7 @@ func getGitDiff() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get worktree: %w", err)
 	}
-
+	// you need in update imports ai!
 	// Get staged changes
 	stagedDiff, err := worktree.DiffStaging()
 	if err != nil {
