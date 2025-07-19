@@ -13,48 +13,47 @@ func getGitDiff() (string, error) {
 		return "", fmt.Errorf("current directory is not a git repository: %w", err)
 	}
 
-	// Work on this function based on the comment AI!
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return "", fmt.Errorf("failed to get worktree: %w", err)
+	}
 
-	/* Reference function, please recreate the same functionity as this but with go-git v6
-	   func getGitDiff() (string, error) {
-	   	// Check if git is installed
-	   	_, err := exec.LookPath("git")
-	   	if err != nil {
-	   		return "", fmt.Errorf("git is not installed or not in PATH")
-	   	}
+	// Get staged changes
+	stagedDiff, err := worktree.DiffStaging()
+	if err != nil {
+		return "", fmt.Errorf("failed to get staged changes: %w", err)
+	}
 
-	   	// Check if current directory is a git repository
-	   	cmd := exec.Command("git", "rev-parse", "--is-inside-work-tree")
-	   	if err := cmd.Run(); err != nil {
-	   		return "", fmt.Errorf("current directory is not a git repository")
-	   	}
+	stagedPatch, err := stagedDiff.Patch()
+	if err != nil {
+		return "", fmt.Errorf("failed to create staged patch: %w", err)
+	}
 
-	   	// Get staged changes
-	   	stagedCmd := exec.Command("git", "diff", "--staged")
-	   	stagedOutput, err := stagedCmd.Output()
-	   	if err != nil {
-	   		return "", fmt.Errorf("failed to get staged changes: %w", err)
-	   	}
+	stagedOutput := stagedPatch.String()
 
-	   	// Get unstaged changes if no staged changes
-	   	if len(stagedOutput) == 0 {
-	   		unstagedCmd := exec.Command("git", "diff")
-	   		unstagedOutput, err := unstagedCmd.Output()
-	   		if err != nil {
-	   			return "", fmt.Errorf("failed to get unstaged changes: %w", err)
-	   		}
+	// If we have staged changes, return them
+	if len(stagedOutput) > 0 {
+		return stagedOutput, nil
+	}
 
-	   		if len(unstagedOutput) == 0 {
-	   			return "", fmt.Errorf("no changes detected in the repository")
-	   		}
+	// Get unstaged changes
+	unstagedDiff, err := worktree.Diff()
+	if err != nil {
+		return "", fmt.Errorf("failed to get unstaged changes: %w", err)
+	}
 
-	   		return string(unstagedOutput), nil
-	   	}
+	unstagedPatch, err := unstagedDiff.Patch()
+	if err != nil {
+		return "", fmt.Errorf("failed to create unstaged patch: %w", err)
+	}
 
-	   	return string(stagedOutput), nil
-	   }
-	*/
+	unstagedOutput := unstagedPatch.String()
 
+	if len(unstagedOutput) == 0 {
+		return "", fmt.Errorf("no changes detected in the repository")
+	}
+
+	return unstagedOutput, nil
 }
 
 var RootCmd = &cobra.Command{
