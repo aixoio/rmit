@@ -239,5 +239,6 @@ var RootCmd = &cobra.Command{
 		}
 
 		prompt += fileListStr + "Changes:\n" + diff
+		// ok ai it's time for a big job please move all of the code in this func to it's own func called generate commit message, make the func private just move the code form changesfiles to prompt at the end to it's own func and copy ws and es over please just do this ai!
 	},
 }
