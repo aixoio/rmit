@@ -218,5 +218,26 @@ var RootCmd = &cobra.Command{
 		if err != nil {
 			log.Printf("%s couldn't get project info: %v", ws.Render("Warning:"), err)
 		}
+
+		var fileListStr string
+		if len(changedFiles) > 0 {
+			fileListStr = fmt.Sprintf("Changed files: %s\n\n", strings.Join(changedFiles, ", "))
+		}
+
+		prompt := "Generate a short, concise git commit message based on the following changes. " +
+			"Follow the conventional commit format (e.g., feat:, fix:, docs:, style:, refactor:, test:, chore:). " +
+			"Keep it under 50 characters if possible. " +
+			"Only respond with the commit message, nothing else.\n\n"
+
+		if projectInfo != "" {
+			prompt += "Project information: " + projectInfo + "\n\n"
+		}
+
+		diff, err := getGitDiff()
+		if err != nil {
+			log.Fatalf("%s %v", red("Error getting git diff:"), err) // make this look like an error use es for this ai!
+		}
+
+		prompt += fileListStr + "Changes:\n" + diff
 	},
 }
