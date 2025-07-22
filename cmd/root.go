@@ -227,7 +227,7 @@ func makeCommit(message string) error {
 	if err := commitCmd.Run(); err != nil {
 		return fmt.Errorf("failed to create commit: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -297,7 +297,6 @@ var RootCmd = &cobra.Command{
 
 		prompt := ""
 		var mutex sync.Mutex
-		var err error
 		var generationErr error
 
 		go func() {
