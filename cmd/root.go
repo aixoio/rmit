@@ -3,120 +3,124 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 
+	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/huh/spinner"
-	git "github.com/go-git/go-git/v6"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-// getGitDiff returns the unified diff of staged or unstaged changes using go-git
 func getGitDiff() (string, error) {
-	// Open the repository in current directory
-	repo, err := git.PlainOpen(".")
+	// Check if git is installed
+	_, err := exec.LookPath("git")
 	if err != nil {
-		return "", fmt.Errorf("current directory is not a git repository: %w", err)
+		return "", fmt.Errorf("git is not installed or not in PATH")
 	}
-	// Determine staged vs unstaged changes
-	wt, err := repo.Worktree()
+
+	// Check if current directory is a git repository
+	cmd := exec.Command("git", "rev-parse", "--is-inside-work-tree")
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("current directory is not a git repository")
+	}
+
+	// Get staged changes
+	stagedCmd := exec.Command("git", "diff", "--staged")
+	stagedOutput, err := stagedCmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("unable to access worktree: %w", err)
+		return "", fmt.Errorf("failed to get staged changes: %w", err)
 	}
-	// Prefer staged changes
-	status, err := wt.Status()
-	if err != nil {
-		return "", fmt.Errorf("failed to get repository status: %w", err)
-	}
-	// Build diff via git CLI for simplicity
-	// If there are staged changes, use --staged diff, otherwise fallback to unstaged
-	var args []string
-	for _, fs := range status {
-		if fs.Staging != git.Unmodified {
-			args = []string{"diff", "--staged"}
-			break
+
+	// Get unstaged changes if no staged changes
+	if len(stagedOutput) == 0 {
+		unstagedCmd := exec.Command("git", "diff")
+		unstagedOutput, err := unstagedCmd.Output()
+		if err != nil {
+			return "", fmt.Errorf("failed to get unstaged changes: %w", err)
 		}
+
+		if len(unstagedOutput) == 0 {
+			return "", fmt.Errorf("no changes detected in the repository")
+		}
+
+		return string(unstagedOutput), nil
 	}
-	if len(args) == 0 {
-		// no staged; use unstaged
-		args = []string{"diff"}
-	}
-	cmd := exec.Command("git", args...)
-	out, err := cmd.Output()
-	if err != nil {
-		return "", fmt.Errorf("failed to get git diff: %w", err)
-	}
-	if len(out) == 0 {
-		return "", fmt.Errorf("no changes detected in the repository")
-	}
-	return string(out), nil
+
+	return string(stagedOutput), nil
 }
 
-// trackCodeChanges returns a map of file paths to their diff hunks using go-git
-func trackCodeChanges(_ string) (map[string]string, error) {
-	// Obtain the full diff
-	d, err := getGitDiff()
-	if err != nil {
-		return nil, err
-	}
-	// Get list of changed files
-	files, err := getChangedFiles()
-	if err != nil {
-		return nil, err
-	}
-	// For each file, extract its diff block
-	changes := make(map[string]string, len(files))
-	for _, f := range files {
-		// match diff header and content for this file
-		re := regexp.MustCompile(`(?ms)^diff --git a/` + regexp.QuoteMeta(f) + ` b/` + regexp.QuoteMeta(f) + `(.*?)(?=^diff --git|\z)`)
-		if m := re.FindString(d); m != "" {
-			changes[f] = strings.TrimSpace(m)
+// trackCodeChanges analyzes a message to identify and structure code changes
+func trackCodeChanges(message string) (map[string]string, error) {
+	changes := make(map[string]string)
+
+	// Split message into lines
+	lines := strings.Split(message, "\n")
+
+	// Track current file being modified
+	var currentFile string
+
+	for _, line := range lines {
+		// Detect file changes
+		if strings.HasPrefix(line, "+++ b/") || strings.HasPrefix(line, "--- a/") {
+			filePath := strings.TrimPrefix(line, "+++ b/")
+			filePath = strings.TrimPrefix(filePath, "--- a/")
+			currentFile = filePath
+			continue
+		}
+
+		// Track additions and deletions
+		if strings.HasPrefix(line, "+") && !strings.HasPrefix(line, "+++") {
+			if currentFile != "" {
+				changes[currentFile] += line + "\n"
+			}
+		} else if strings.HasPrefix(line, "-") && !strings.HasPrefix(line, "---") {
+			if currentFile != "" {
+				changes[currentFile] += line + "\n"
+			}
 		}
 	}
+
 	return changes, nil
 }
 
-// getChangedFiles returns the list of staged or unstaged changed files using go-git
+// getChangedFiles gets the names of files that have been changed
 func getChangedFiles() ([]string, error) {
-	repo, err := git.PlainOpen(".")
+	// Check if git is installed
+	_, err := exec.LookPath("git")
 	if err != nil {
-		return nil, fmt.Errorf("current directory is not a git repository: %w", err)
+		return nil, fmt.Errorf("git is not installed or not in PATH")
 	}
-	wt, err := repo.Worktree()
+
+	// Get staged files
+	stagedCmd := exec.Command("git", "diff", "--staged", "--name-only")
+	stagedOutput, err := stagedCmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("unable to access worktree: %w", err)
+		return nil, fmt.Errorf("failed to get staged files: %w", err)
 	}
-	status, err := wt.Status()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get repository status: %w", err)
-	}
-	// Collect staged changes
-	var staged []string
-	for file, fs := range status {
-		if fs.Staging != git.Unmodified {
-			staged = append(staged, file)
+
+	// Get unstaged files if no staged files
+	if len(stagedOutput) == 0 {
+		unstagedCmd := exec.Command("git", "diff", "--name-only")
+		unstagedOutput, err := unstagedCmd.Output()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get unstaged files: %w", err)
 		}
-	}
-	if len(staged) > 0 {
-		return staged, nil
-	}
-	// No staged, collect unstaged changes
-	var unstaged []string
-	for file, fs := range status {
-		if fs.Worktree != git.Unmodified {
-			unstaged = append(unstaged, file)
+
+		if len(unstagedOutput) == 0 {
+			return nil, fmt.Errorf("no changed files detected in the repository")
 		}
+
+		return strings.Split(strings.TrimSpace(string(unstagedOutput)), "\n"), nil
 	}
-	if len(unstaged) > 0 {
-		return unstaged, nil
-	}
-	return nil, fmt.Errorf("no changed files detected in the repository")
+
+	return strings.Split(strings.TrimSpace(string(stagedOutput)), "\n"), nil
 }
 
 func getProjectInfo() (string, error) {
@@ -205,6 +209,23 @@ func getProjectInfo() (string, error) {
 	return projectInfo.String(), nil
 }
 
+// makeCommit creates a git commit with the provided message
+func makeCommit(message string) error {
+	// Stage all changes
+	addCmd := exec.Command("git", "add", ".")
+	addCmd.Stdout = os.Stdout
+	addCmd.Stderr = os.Stderr
+	if err := addCmd.Run(); err != nil {
+		return fmt.Errorf("failed to stage changes: %w", err)
+	}
+
+	// Create commit
+	commitCmd := exec.Command("git", "commit", "-m", message)
+	commitCmd.Stdout = os.Stdout
+	commitCmd.Stderr = os.Stderr
+	return commitCmd.Run()
+}
+
 func generateCommitMessage(m string) (string, error) {
 	changedFiles, err := getChangedFiles()
 	if err != nil {
@@ -286,6 +307,33 @@ var RootCmd = &cobra.Command{
 
 		mutex.Lock()
 		defer mutex.Unlock()
-		fmt.Println(prompt)
+
+		gts := lipgloss.NewStyle().Foreground(lipgloss.Color("#5100ffff")).Bold(true)
+		gs := lipgloss.NewStyle().UnsetForeground().UnsetBold()
+
+		fmt.Println(gts.Render("Generated commit message:"), gs.Render(prompt))
+
+		var commit string
+
+		form := huh.NewForm(
+			huh.NewGroup(
+				huh.NewSelect[string]().
+					Title("Pick a country.").
+					Options(
+						huh.NewOption("Yes", "Y"),
+						huh.NewOption("Edit", "EM"),
+						huh.NewOption("Quit", "Q"),
+					).
+					Value(&commit),
+			),
+		)
+
+		form.Run()
+
+		switch commit {
+		case "Y":
+			makeCommit(prompt)
+		}
+
 	},
 }
