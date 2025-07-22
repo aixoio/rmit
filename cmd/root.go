@@ -224,7 +224,11 @@ func makeCommit(message string) error {
 	commitCmd := exec.Command("git", "commit", "-m", message)
 	commitCmd.Stdout = os.Stdout
 	commitCmd.Stderr = os.Stderr
-	return commitCmd.Run()
+	if err := commitCmd.Run(); err != nil {
+		return fmt.Errorf("failed to create commit: %w", err)
+	}
+	
+	return nil
 }
 
 func generateCommitMessage(m string) (string, error) {
@@ -282,7 +286,7 @@ var RootCmd = &cobra.Command{
 	Short: "Generate git commit messages with AI",
 	Long:  "rmit uses OpenRouter to generate descriptive git commit messages based on your changes",
 	Run: func(cmd *cobra.Command, args []string) {
-		// es := lipgloss.NewStyle().Foreground(lipgloss.Color("#ff0000")).Bold(true)
+		es := lipgloss.NewStyle().Foreground(lipgloss.Color("#ff0000")).Bold(true)
 
 		model := viper.GetString("default_model")
 
@@ -293,13 +297,18 @@ var RootCmd = &cobra.Command{
 
 		prompt := ""
 		var mutex sync.Mutex
+		var err error
+		var generationErr error
 
 		go func() {
 			defer cancel()
 
-			p, err := generateCommitMessage(model)
-			if err != nil {
-				panic(err)
+			p, e := generateCommitMessage(model)
+			if e != nil {
+				mutex.Lock()
+				generationErr = e
+				mutex.Unlock()
+				return
 			}
 
 			mutex.Lock()
@@ -309,7 +318,12 @@ var RootCmd = &cobra.Command{
 		spinner.New().Title("Generating commit message...").Context(ctx).Run()
 
 		mutex.Lock()
-		defer mutex.Unlock()
+		if generationErr != nil {
+			fmt.Fprintln(os.Stderr, es.Render("Error: "+generationErr.Error()))
+			mutex.Unlock()
+			return
+		}
+		mutex.Unlock()
 
 		gts := lipgloss.NewStyle().Foreground(lipgloss.Color("#006affff")).Bold(true)
 		gs := lipgloss.NewStyle().MarginLeft(3).MarginBottom(1).Foreground(lipgloss.Color("#00c3c3ff"))
@@ -337,7 +351,10 @@ var RootCmd = &cobra.Command{
 
 		switch commit {
 		case "Y":
-			makeCommit(prompt)
+			if err := makeCommit(prompt); err != nil {
+				fmt.Fprintln(os.Stderr, es.Render("Error: "+err.Error()))
+				return
+			}
 		case "R":
 			goto retry_start
 		case "EM":
