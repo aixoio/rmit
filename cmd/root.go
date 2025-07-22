@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/aixoio/rmit/editor"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/huh/spinner"
 	"github.com/charmbracelet/lipgloss"
@@ -285,6 +286,8 @@ var RootCmd = &cobra.Command{
 
 		model := viper.GetString("default_model")
 
+	retry_start:
+
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
@@ -308,20 +311,22 @@ var RootCmd = &cobra.Command{
 		mutex.Lock()
 		defer mutex.Unlock()
 
-		gts := lipgloss.NewStyle().Foreground(lipgloss.Color("#5100ffff")).Bold(true)
-		gs := lipgloss.NewStyle().UnsetForeground().UnsetBold()
+		gts := lipgloss.NewStyle().Foreground(lipgloss.Color("#006affff")).Bold(true)
+		gs := lipgloss.NewStyle().MarginLeft(3).MarginBottom(1).Foreground(lipgloss.Color("#00c3c3ff"))
 
-		fmt.Println(gts.Render("Generated commit message:"), gs.Render(prompt))
+		fmt.Println(gts.Render("Generated commit message:"))
+		fmt.Println(gs.Render(prompt))
 
-		var commit string
+		commit := "Y"
 
 		form := huh.NewForm(
 			huh.NewGroup(
 				huh.NewSelect[string]().
-					Title("Pick a country.").
+					Title("Choose an option").
 					Options(
 						huh.NewOption("Yes", "Y"),
 						huh.NewOption("Edit", "EM"),
+						huh.NewOption("Retry", "R"),
 						huh.NewOption("Quit", "Q"),
 					).
 					Value(&commit),
@@ -333,6 +338,13 @@ var RootCmd = &cobra.Command{
 		switch commit {
 		case "Y":
 			makeCommit(prompt)
+		case "R":
+			goto retry_start
+		case "EM":
+			editor.StartEditor(prompt)
+		case "Q":
+			quitStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4")).Bold(true)
+			fmt.Println(quitStyle.Render("Goodbye!"))
 		}
 
 	},
