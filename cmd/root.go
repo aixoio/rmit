@@ -357,7 +357,19 @@ var RootCmd = &cobra.Command{
 		case "R":
 			goto retry_start
 		case "EM":
-			editor.StartEditor(prompt)
+			edited, err := editor.StartEditor(prompt)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, es.Render("Error: "+err.Error()))
+				return
+			}
+			if strings.TrimSpace(edited) == "" {
+				fmt.Fprintln(os.Stderr, es.Render("Error: empty commit message returned from editor"))
+				return
+			}
+			if err := makeCommit(edited); err != nil {
+				fmt.Fprintln(os.Stderr, es.Render("Error: "+err.Error()))
+				return
+			}
 		case "Q":
 			quitStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4")).Bold(true)
 			fmt.Println(quitStyle.Render("Goodbye!"))

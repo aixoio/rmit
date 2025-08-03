@@ -13,12 +13,13 @@ import (
 var GetCmd = &cobra.Command{
 	Use:   "get [key]",
 	Short: "Get configuration values",
-	Long: `Get configuration values like API key, URL, and default model.
+	Long: `Get configuration values like API key, URL, default model, and chat model.
 
 Examples:
   rmit get                 # show all configuration values
   rmit get api_key         # show the current API key
-  rmit get default_model   # show the configured model`,
+  rmit get default_model   # show the configured default model
+  rmit get chat_model      # show the configured chat model`,
 	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		ks := lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4")).Bold(true).MarginRight(1)
@@ -38,6 +39,7 @@ Examples:
 
 			fmt.Println(ks.Render("api_url"), vs.Render(viper.GetString("api_url")))
 			fmt.Println(ks.Render("default_model"), vs.Render(viper.GetString("default_model")))
+			fmt.Println(ks.Render("chat_model"), vs.Render(viper.GetString("chat_model")))
 			fmt.Println(ks.Render("config_path"), vs.Render(viper.ConfigFileUsed()))
 
 		} else {
@@ -57,8 +59,10 @@ Examples:
 				fmt.Println(ks.Render("api_url"), vs.Render(viper.GetString("api_url")))
 			case "default_model":
 				fmt.Println(ks.Render("default_model"), vs.Render(viper.GetString("default_model")))
+			case "chat_model":
+				fmt.Println(ks.Render("chat_model"), vs.Render(viper.GetString("chat_model")))
 			default:
-				log.Fatalf("%s %s. Valid keys are: api_key, api_url, default_model", es.Render("Unknown configuration key:"), key)
+				log.Fatalf("%s %s. Valid keys are: api_key, api_url, default_model, chat_model", es.Render("Unknown configuration key:"), key)
 			}
 		}
 

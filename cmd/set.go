@@ -12,7 +12,7 @@ import (
 var setCmd = &cobra.Command{
 	Use:   "set [key] [value]",
 	Short: "Set configuration values",
-	Long:  "Set configuration values like API key, URL, and default model",
+	Long:  "Set configuration values like API key, URL, default model, and chat model",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		// Define styles (consistent with get.go)
@@ -24,9 +24,14 @@ var setCmd = &cobra.Command{
 		value := args[1]
 
 		// Validate configuration key
-		validKeys := map[string]bool{"api_key": true, "api_url": true, "default_model": true}
+		validKeys := map[string]bool{
+			"api_key":       true,
+			"api_url":       true,
+			"default_model": true,
+			"chat_model":    true,
+		}
 		if !validKeys[key] {
-			log.Fatalf("%s %s. Valid keys are: api_key, api_url, default_model",
+			log.Fatalf("%s %s. Valid keys are: api_key, api_url, default_model, chat_model",
 				es.Render("Invalid configuration key:"), key)
 		}
 

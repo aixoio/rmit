@@ -9,7 +9,7 @@ require (
 	github.com/charmbracelet/huh v0.7.0
 	github.com/charmbracelet/huh/spinner v0.0.0-20250714122654-40d2b68703eb
 	github.com/charmbracelet/lipgloss v1.1.0
-	github.com/openai/openai-go v1.11.0
+	github.com/openai/openai-go v1.12.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 )
