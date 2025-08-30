@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/aixoio/rmit/editor"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/huh/spinner"
 	"github.com/charmbracelet/lipgloss"
@@ -338,7 +337,6 @@ var RootCmd = &cobra.Command{
 					Title("Choose an option").
 					Options(
 						huh.NewOption("Yes", "Y"),
-						huh.NewOption("Edit", "EM"),
 						huh.NewOption("Retry", "R"),
 						huh.NewOption("Quit", "Q"),
 					).
@@ -356,20 +354,6 @@ var RootCmd = &cobra.Command{
 			}
 		case "R":
 			goto retry_start
-		case "EM":
-			edited, err := editor.StartEditor(prompt)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, es.Render("Error: "+err.Error()))
-				return
-			}
-			if strings.TrimSpace(edited) == "" {
-				fmt.Fprintln(os.Stderr, es.Render("Error: empty commit message returned from editor"))
-				return
-			}
-			if err := makeCommit(edited); err != nil {
-				fmt.Fprintln(os.Stderr, es.Render("Error: "+err.Error()))
-				return
-			}
 		case "Q":
 			quitStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4")).Bold(true)
 			fmt.Println(quitStyle.Render("Goodbye!"))
