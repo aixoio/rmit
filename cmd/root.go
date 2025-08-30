@@ -18,6 +18,16 @@ import (
 	"github.com/spf13/viper"
 )
 
+// runGitCommand executes a git command and returns combined stdout/stderr output
+func runGitCommand(args ...string) (string, error) {
+	cmd := exec.Command("git", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("git command failed (%s): %w\nOutput: %s", strings.Join(args, " "), err, string(output))
+	}
+	return string(output), nil
+}
+
 var commitAuto bool
 
 func init() {
@@ -32,22 +42,20 @@ func getGitDiff() (string, error) {
 	}
 
 	// Check if current directory is a git repository
-	cmd := exec.Command("git", "rev-parse", "--is-inside-work-tree")
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("current directory is not a git repository")
+	_, err = runGitCommand("rev-parse", "--is-inside-work-tree")
+	if err != nil {
+		return "", fmt.Errorf("current directory is not a git repository: %w", err)
 	}
 
 	// Get staged changes
-	stagedCmd := exec.Command("git", "diff", "--staged")
-	stagedOutput, err := stagedCmd.Output()
+	stagedOutput, err := runGitCommand("diff", "--staged")
 	if err != nil {
 		return "", fmt.Errorf("failed to get staged changes: %w", err)
 	}
 
 	// Get unstaged changes if no staged changes
 	if len(stagedOutput) == 0 {
-		unstagedCmd := exec.Command("git", "diff")
-		unstagedOutput, err := unstagedCmd.Output()
+		unstagedOutput, err := runGitCommand("diff")
 		if err != nil {
 			return "", fmt.Errorf("failed to get unstaged changes: %w", err)
 		}
@@ -56,10 +64,10 @@ func getGitDiff() (string, error) {
 			return "", fmt.Errorf("no changes detected in the repository")
 		}
 
-		return string(unstagedOutput), nil
+		return unstagedOutput, nil
 	}
 
-	return string(stagedOutput), nil
+	return stagedOutput, nil
 }
 
 // trackCodeChanges analyzes a message to identify and structure code changes
@@ -96,6 +104,23 @@ func trackCodeChanges(message string) (map[string]string, error) {
 	return changes, nil
 }
 
+// getCurrentBranch gets the current git branch name
+func getCurrentBranch() (string, error) {
+	// Check if git is installed
+	_, err := exec.LookPath("git")
+	if err != nil {
+		return "", fmt.Errorf("git is not installed or not in PATH")
+	}
+
+	// Get current branch
+	branchOutput, err := runGitCommand("rev-parse", "--abbrev-ref", "HEAD")
+	if err != nil {
+		return "", fmt.Errorf("failed to get current branch: %w", err)
+	}
+
+	return strings.TrimSpace(branchOutput), nil
+}
+
 // getChangedFiles gets the names of files that have been changed
 func getChangedFiles() ([]string, error) {
 	// Check if git is installed
@@ -105,16 +130,14 @@ func getChangedFiles() ([]string, error) {
 	}
 
 	// Get staged files
-	stagedCmd := exec.Command("git", "diff", "--staged", "--name-only")
-	stagedOutput, err := stagedCmd.Output()
+	stagedOutput, err := runGitCommand("diff", "--staged", "--name-only")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get staged files: %w", err)
 	}
 
 	// Get unstaged files if no staged files
 	if len(stagedOutput) == 0 {
-		unstagedCmd := exec.Command("git", "diff", "--name-only")
-		unstagedOutput, err := unstagedCmd.Output()
+		unstagedOutput, err := runGitCommand("diff", "--name-only")
 		if err != nil {
 			return nil, fmt.Errorf("failed to get unstaged files: %w", err)
 		}
@@ -123,22 +146,17 @@ func getChangedFiles() ([]string, error) {
 			return nil, fmt.Errorf("no changed files detected in the repository")
 		}
 
-		return strings.Split(strings.TrimSpace(string(unstagedOutput)), "\n"), nil
+		return strings.Split(strings.TrimSpace(unstagedOutput), "\n"), nil
 	}
 
-	return strings.Split(strings.TrimSpace(string(stagedOutput)), "\n"), nil
+	return strings.Split(strings.TrimSpace(stagedOutput), "\n"), nil
 }
 
 func getProjectInfo() (string, error) {
-	// Try to determine the project type based on files
-	files, err := filepath.Glob("*")
-	if err != nil {
-		return "", fmt.Errorf("failed to list files: %w", err)
-	}
 	var projectInfo strings.Builder
-	projectInfo.WriteString("Project files include: ")
+	projectInfo.WriteString("Project context: ")
 
-	// Look for specific project indicators
+	// Look for specific project indicators in root and common subdirectories
 	hasGoMod := false
 	hasPackageJSON := false
 	hasPomXML := false
@@ -150,6 +168,23 @@ func getProjectInfo() (string, error) {
 	hasMakefile := false
 	hasCargo := false
 	hasComposer := false
+
+	// Framework-specific indicators
+	hasNextJS := false
+	hasReact := false
+	hasVue := false
+	hasAngular := false
+	hasDjango := false
+	hasFlask := false
+	hasFastAPI := false
+	hasDocker := false
+	hasKubernetes := false
+
+	// Scan root directory
+	files, err := filepath.Glob("*")
+	if err != nil {
+		return "", fmt.Errorf("failed to list files: %w", err)
+	}
 
 	for _, file := range files {
 		switch file {
@@ -175,41 +210,122 @@ func getProjectInfo() (string, error) {
 			hasCargo = true
 		case "composer.json":
 			hasComposer = true
+		case "Dockerfile", "docker-compose.yml", "docker-compose.yaml":
+			hasDocker = true
+		case "k8s", "kubernetes":
+			hasKubernetes = true
 		}
 	}
 
+	// Scan common subdirectories for framework files
+	subdirs := []string{"frontend", "backend", "client", "server", "src", "web", "api"}
+	for _, subdir := range subdirs {
+		if _, err := os.Stat(subdir); err == nil {
+			subFiles, err := filepath.Glob(filepath.Join(subdir, "*"))
+			if err == nil {
+				for _, file := range subFiles {
+					base := filepath.Base(file)
+					switch base {
+					case "next.config.js", "next.config.mjs", "next.config.ts":
+						hasNextJS = true
+					case "vue.config.js", "nuxt.config.js", "nuxt.config.ts":
+						hasVue = true
+					case "angular.json":
+						hasAngular = true
+					case "manage.py":
+						hasDjango = true
+					case "app.py", "main.py":
+						// Check if it's Flask or FastAPI by reading content
+						if content, err := os.ReadFile(file); err == nil {
+							contentStr := string(content)
+							if strings.Contains(contentStr, "from flask import") || strings.Contains(contentStr, "import flask") {
+								hasFlask = true
+							}
+							if strings.Contains(contentStr, "from fastapi import") || strings.Contains(contentStr, "import fastapi") {
+								hasFastAPI = true
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Check package.json for React if not already detected
+	if hasPackageJSON && !hasReact {
+		if content, err := os.ReadFile("package.json"); err == nil {
+			contentStr := string(content)
+			if strings.Contains(contentStr, "\"react\"") || strings.Contains(contentStr, "'react'") {
+				hasReact = true
+			}
+		}
+	}
+
+	// Build project info string
+	var projectTypes []string
+
 	if hasGoMod {
-		projectInfo.WriteString("Go project. ")
+		projectTypes = append(projectTypes, "Go")
 	}
 	if hasPackageJSON {
-		projectInfo.WriteString("JavaScript/Node.js project. ")
+		if hasNextJS {
+			projectTypes = append(projectTypes, "Next.js")
+		} else if hasReact {
+			projectTypes = append(projectTypes, "React")
+		} else if hasVue {
+			projectTypes = append(projectTypes, "Vue.js")
+		} else if hasAngular {
+			projectTypes = append(projectTypes, "Angular")
+		} else {
+			projectTypes = append(projectTypes, "Node.js")
+		}
 	}
 	if hasPomXML {
-		projectInfo.WriteString("Java/Maven project. ")
+		projectTypes = append(projectTypes, "Java/Maven")
 	}
 	if hasCMake {
-		projectInfo.WriteString("C/C++ project with CMake. ")
+		projectTypes = append(projectTypes, "C/C++ with CMake")
 	}
 	if hasPyProject {
-		projectInfo.WriteString("Python project. ")
+		if hasDjango {
+			projectTypes = append(projectTypes, "Django")
+		} else if hasFlask {
+			projectTypes = append(projectTypes, "Flask")
+		} else if hasFastAPI {
+			projectTypes = append(projectTypes, "FastAPI")
+		} else {
+			projectTypes = append(projectTypes, "Python")
+		}
 	}
 	if hasGradle {
-		projectInfo.WriteString("Java/Gradle project. ")
+		projectTypes = append(projectTypes, "Java/Gradle")
 	}
 	if hasUV {
-		projectInfo.WriteString("Python/uv project. ")
+		projectTypes = append(projectTypes, "Python with uv")
 	}
 	if hasBun {
-		projectInfo.WriteString("JavaScript/Bun project. ")
+		projectTypes = append(projectTypes, "JavaScript with Bun")
 	}
 	if hasMakefile {
-		projectInfo.WriteString("C/C++ project with Makefile. ")
+		projectTypes = append(projectTypes, "C/C++ with Makefile")
 	}
 	if hasCargo {
-		projectInfo.WriteString("Rust project. ")
+		projectTypes = append(projectTypes, "Rust")
 	}
 	if hasComposer {
-		projectInfo.WriteString("PHP/Composer project. ")
+		projectTypes = append(projectTypes, "PHP with Composer")
+	}
+	if hasDocker {
+		projectTypes = append(projectTypes, "Dockerized")
+	}
+	if hasKubernetes {
+		projectTypes = append(projectTypes, "Kubernetes")
+	}
+
+	if len(projectTypes) > 0 {
+		projectInfo.WriteString(strings.Join(projectTypes, ", "))
+	} else {
+		projectInfo.WriteString("Unknown project type")
 	}
 
 	return projectInfo.String(), nil
@@ -218,18 +334,14 @@ func getProjectInfo() (string, error) {
 // makeCommit creates a git commit with the provided message
 func makeCommit(message string) error {
 	// Stage all changes
-	addCmd := exec.Command("git", "add", ".")
-	addCmd.Stdout = os.Stdout
-	addCmd.Stderr = os.Stderr
-	if err := addCmd.Run(); err != nil {
+	_, err := runGitCommand("add", ".")
+	if err != nil {
 		return fmt.Errorf("failed to stage changes: %w", err)
 	}
 
 	// Create commit
-	commitCmd := exec.Command("git", "commit", "-m", message)
-	commitCmd.Stdout = os.Stdout
-	commitCmd.Stderr = os.Stderr
-	if err := commitCmd.Run(); err != nil {
+	_, err = runGitCommand("commit", "-m", message)
+	if err != nil {
 		return fmt.Errorf("failed to create commit: %w", err)
 	}
 
@@ -247,6 +359,12 @@ func generateCommitMessage(m string) (string, error) {
 		return "", fmt.Errorf("couldn't get project info: %w", err)
 	}
 
+	currentBranch, err := getCurrentBranch()
+	if err != nil {
+		// Don't fail if we can't get branch info, just continue without it
+		currentBranch = "unknown"
+	}
+
 	var fileListStr string
 	if len(changedFiles) > 0 {
 		fileListStr = fmt.Sprintf("Changed files: %s\n\n", strings.Join(changedFiles, ", "))
@@ -258,7 +376,11 @@ func generateCommitMessage(m string) (string, error) {
 		"Only respond with the commit message, nothing else.\n\n"
 
 	if projectInfo != "" {
-		prompt += "Project information: " + projectInfo + "\n\n"
+		prompt += "Project context: " + projectInfo + "\n\n"
+	}
+
+	if currentBranch != "unknown" && currentBranch != "main" && currentBranch != "master" {
+		prompt += fmt.Sprintf("Current branch: %s\n\n", currentBranch)
 	}
 
 	diff, err := getGitDiff()
@@ -266,7 +388,19 @@ func generateCommitMessage(m string) (string, error) {
 		return "", fmt.Errorf("error getting git diff: %w", err)
 	}
 
-	prompt += fileListStr + "Changes:\n" + diff
+	// Use trackCodeChanges for structured analysis
+	structuredChanges, err := trackCodeChanges(diff)
+	if err == nil && len(structuredChanges) > 0 {
+		prompt += "Structured changes by file:\n"
+		for file, changes := range structuredChanges {
+			if changes != "" {
+				prompt += fmt.Sprintf("File: %s\n%s\n", file, strings.TrimSpace(changes))
+			}
+		}
+		prompt += "\n"
+	}
+
+	prompt += fileListStr + "Full diff:\n" + diff
 
 	client := openai.NewClient(
 		option.WithBaseURL(viper.GetString("api_url")),
@@ -280,7 +414,7 @@ func generateCommitMessage(m string) (string, error) {
 		Model: m,
 	})
 	if err != nil {
-		return "", fmt.Errorf("error getting git diff: %w", err)
+		return "", fmt.Errorf("error calling AI service: %w", err)
 	}
 
 	return chatCompletion.Choices[0].Message.Content, nil
