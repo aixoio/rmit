@@ -84,10 +84,12 @@ rmit
 
 ### Auto-Commit
 
-Use the `-c` flag to automatically create a commit with the generated message:
+Use the `-c` or `--commit` flag to automatically create a commit with the generated message:
 
 ```bash
 rmit -c
+# or
+rmit --commit
 ```
 
 ### Custom Model

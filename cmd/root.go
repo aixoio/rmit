@@ -18,6 +18,12 @@ import (
 	"github.com/spf13/viper"
 )
 
+var commitAuto bool
+
+func init() {
+	RootCmd.Flags().BoolVarP(&commitAuto, "commit", "c", false, "Auto-commit the generated message")
+}
+
 func getGitDiff() (string, error) {
 	// Check if git is installed
 	_, err := exec.LookPath("git")
@@ -329,34 +335,42 @@ var RootCmd = &cobra.Command{
 		fmt.Println(gts.Render("Generated commit message:"))
 		fmt.Println(gs.Render(prompt))
 
-		commit := "Y"
-
-		form := huh.NewForm(
-			huh.NewGroup(
-				huh.NewSelect[string]().
-					Title("Choose an option").
-					Options(
-						huh.NewOption("Yes", "Y"),
-						huh.NewOption("Retry", "R"),
-						huh.NewOption("Quit", "Q"),
-					).
-					Value(&commit),
-			),
-		)
-
-		form.Run()
-
-		switch commit {
-		case "Y":
+		if commitAuto {
 			if err := makeCommit(prompt); err != nil {
 				fmt.Fprintln(os.Stderr, es.Render("Error: "+err.Error()))
 				return
 			}
-		case "R":
-			goto retry_start
-		case "Q":
-			quitStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4")).Bold(true)
-			fmt.Println(quitStyle.Render("Goodbye!"))
+			fmt.Println("Successfully committed with message:", prompt)
+		} else {
+			commit := "Y"
+
+			form := huh.NewForm(
+				huh.NewGroup(
+					huh.NewSelect[string]().
+						Title("Choose an option").
+						Options(
+							huh.NewOption("Yes", "Y"),
+							huh.NewOption("Retry", "R"),
+							huh.NewOption("Quit", "Q"),
+						).
+						Value(&commit),
+				),
+			)
+
+			form.Run()
+
+			switch commit {
+			case "Y":
+				if err := makeCommit(prompt); err != nil {
+					fmt.Fprintln(os.Stderr, es.Render("Error: "+err.Error()))
+					return
+				}
+			case "R":
+				goto retry_start
+			case "Q":
+				quitStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4")).Bold(true)
+				fmt.Println(quitStyle.Render("Goodbye!"))
+			}
 		}
 
 	},
